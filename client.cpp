@@ -43,24 +43,12 @@ bool client_subscribe(YAAMP_CLIENT *client, json_value *json_params)
 
 	get_random_key(client->notify_id);
 
-	if(json_params->u.array.length>0)
-	{
-		if (json_params->u.array.values[0]->u.string.ptr)
-			strncpy(client->version, json_params->u.array.values[0]->u.string.ptr, 1023);
-
-		if(strstr(client->version, "NiceHash") || strstr(client->version, "proxy") || strstr(client->version, "/3."))
-			client->reconnectable = false;
-
-		if(strstr(client->version, "ccminer")) client->stats = true;
-		if(strstr(client->version, "cpuminer-multi")) client->stats = true;
-		if(strstr(client->version, "cpuminer-opt")) client->stats = true;
-	}
-
 	if(json_params->u.array.length>1)
 	{
 		char notify_id[1024] = { 0 };
-		if (json_params->u.array.values[1]->u.string.ptr)
-			strncpy(notify_id, json_params->u.array.values[1]->u.string.ptr, 1023);
+		//! xmrig/cryptonote dont have equivalent field, this will do for now
+		if (json_params->u.object.values[0].value->u.string.ptr)
+			strncpy(notify_id, json_params->u.object.values[0].value->u.string.ptr, 1023);
 
 		YAAMP_CLIENT *client1 = client_find_notify_id(notify_id, true);
 		if(client1)
@@ -117,9 +105,6 @@ bool client_subscribe(YAAMP_CLIENT *client, json_value *json_params)
 	if (g_debuglog_client) {
 		debuglog("new client with nonce %s\n", client->extranonce1);
 	}
-
-	client_send_result(client, "[[[\"mining.set_difficulty\",\"%.3g\"],[\"mining.notify\",\"%s\"]],\"%s\",%d]",
-		client->difficulty_actual, client->notify_id, client->extranonce1, client->extranonce2size);
 
 	return true;
 }
@@ -202,17 +187,17 @@ bool client_authorize(YAAMP_CLIENT *client, json_value *json_params)
 		return false;
 	}
 
-	if(json_params->u.array.length>1 && json_params->u.array.values[1]->u.string.ptr)
-		strncpy(client->password, json_params->u.array.values[1]->u.string.ptr, 1023);
+	if(json_params->u.object.length>1 && json_params->u.object.values[1].value->u.string.ptr)
+		strncpy(client->password, json_params->u.object.values[1].value->u.string.ptr, 1023);
 
 	if (g_list_client.count >= g_stratum_max_cons) {
 		client_send_error(client, 21, "Server full");
 		return false;
 	}
 
-	if(json_params->u.array.length>0 && json_params->u.array.values[0]->u.string.ptr)
+	if(json_params->u.array.length>0 && json_params->u.object.values[0].value->u.string.ptr)
 	{
-		strncpy(client->username, json_params->u.array.values[0]->u.string.ptr, 1023);
+		strncpy(client->username, json_params->u.object.values[0].value->u.string.ptr, 1023);
 
 		db_check_user_input(client->username);
 		int len = strlen(client->username);
@@ -590,16 +575,17 @@ void *client_thread(void *p)
 		}
 
 		bool b = false;
-		if(!strcmp(method, "mining.subscribe"))
-			b = client_subscribe(client, json_params);
-
+		if(!strcmp(method, "login") || !strcmp(method, "mining.subscribe")) {
+			client_subscribe(client, json_params);
+			b = client_authorize(client, json_params);
+		}
 		else if(!strcmp(method, "mining.authorize"))
 			b = client_authorize(client, json_params);
 
 		else if(!strcmp(method, "mining.ping"))
 			b = client_send_result(client, "\"pong\"");
 
-		else if(!strcmp(method, "mining.submit"))
+		else if(!strcmp(method, "submit") || !strcmp(method, "mining.submit"))
 			b = client_submit(client, json_params);
 
 		else if(!strcmp(method, "mining.suggest_difficulty"))
