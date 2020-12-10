@@ -6,7 +6,7 @@ CPPFLAGS= -g -O2 -DHAVE_CURL -I/usr/include/mysql
 # if you use the auto exchange feature...
 CPPFLAGS += -DNO_EXCHANGE
 
-LDLIBS=iniparser/libiniparser.a algos/libalgos.a sha3/libhash.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient
+LDLIBS=iniparser/libiniparser.a algos/libalgos.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient
 
 SOURCES=stratum.cpp db.cpp coind.cpp coind_aux.cpp coind_template.cpp coind_submit.cpp util.cpp list.cpp \
 	rpc.cpp job.cpp job_send.cpp job_core.cpp merkle.cpp share.cpp socket.cpp coinbase.cpp \
@@ -46,8 +46,7 @@ OBJECTS=$(SOURCES:.cpp=.o)
 OUTPUT=stratum
 
 CODEDIR1=algos
-CODEDIR2=sha3
-CODEDIR3=iniparser
+CODEDIR2=iniparser
 
 .PHONY: projectcode1 projectcode2 projectcode3
 
@@ -58,9 +57,6 @@ projectcode1:
 
 projectcode2:
 	$(MAKE) -C $(CODEDIR2)
-
-projectcode3:
-	$(MAKE) -C $(CODEDIR3)
 
 $(SOURCES): stratum.h util.h
 
