@@ -73,6 +73,7 @@ void *stratum_thread(void *p);
 
 YAAMP_ALGO g_algos[] =
 {
+	{"sha256", sha256_double_hash, 1, 0, 0},
 	{"randomx", sha256_double_hash, 1, 0, 0},
 	{"", NULL, 0, 0},
 };
@@ -136,7 +137,7 @@ int main(int argc, char **argv)
 
 	strcpy(g_stratum_algo, iniparser_getstring(ini, "STRATUM:algo", NULL));
 	g_stratum_difficulty = iniparser_getdouble(ini, "STRATUM:difficulty", 16);
-	g_stratum_min_diff = iniparser_getdouble(ini, "STRATUM:diff_min", g_stratum_difficulty/2);
+	g_stratum_min_diff = 0.00000047; //! equivalent is 0020770b0000...
 	g_stratum_max_diff = iniparser_getdouble(ini, "STRATUM:diff_max", g_stratum_difficulty*8192);
 
 	g_stratum_max_cons = iniparser_getint(ini, "STRATUM:max_cons", 5000);
@@ -206,8 +207,6 @@ int main(int argc, char **argv)
 	pthread_t thread1;
 	pthread_create(&thread1, NULL, stratum_thread, NULL);
 
-	sleep(20);
-
 	while(!g_exiting)
 	{
 		db_register_stratum(db);
@@ -243,7 +242,7 @@ int main(int argc, char **argv)
 		object_prune(&g_list_share, share_delete);
 		object_prune(&g_list_submit, submit_delete);
 
-		if (!g_exiting) sleep(20);
+		if (!g_exiting) sleep(1);
 	}
 
 	stratumlog("closing database...\n");

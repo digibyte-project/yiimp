@@ -102,6 +102,9 @@ bool client_subscribe(YAAMP_CLIENT *client, json_value *json_params)
 	strcpy(client->extranonce1_last, client->extranonce1);
 	client->extranonce2size_last = client->extranonce2size;
 
+	memset(client->monero_diff, 0, 16);
+	randomx_diff_to_target(client->difficulty_actual, client->monero_diff);
+
 	if (g_debuglog_client) {
 		debuglog("new client with nonce %s\n", client->extranonce1);
 	}
@@ -259,8 +262,8 @@ bool client_authorize(YAAMP_CLIENT *client, json_value *json_params)
 		return false;
 	}
 
-	client_send_result(client, "true");
-	client_send_difficulty(client, client->difficulty_actual);
+	// client_send_result(client, "true");
+	// client_send_difficulty(client, client->difficulty_actual);
 
 	if(client->jobid_locked)
 		job_send_jobid(client, client->jobid_locked);

@@ -98,6 +98,7 @@ uint64_t htoi64(const char *s);
 uint64_t decode_compact(const char *input);
 
 uint64_t diff_to_target(double difficulty);
+void randomx_diff_to_target(double difficulty, char* target);
 double target_to_diff(uint64_t target);
 
 uint64_t get_hash_difficulty(unsigned char *input);
@@ -112,6 +113,10 @@ void string_lower(char *s);
 void string_upper(char *s);
 
 int getblocheight(const char *coinb1);
+
+uint64_t share_to_target(double diff);
+
+void flipbits(char* input, char* output);
 
 //////////////////////////////////////////////////////////////////////////
 

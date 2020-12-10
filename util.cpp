@@ -519,6 +519,25 @@ uint64_t diff_to_target(double difficulty)
 	return t;
 }
 
+void randomx_diff_to_target(double difficulty, char* target)
+{
+	uint64_t t = 0x00000000ffff0000*g_current_algo->diff_multiplier/difficulty;
+
+	//! could be useful later on..
+	char longtarget[32];
+	memset(longtarget, 0, 32);
+	sprintf(longtarget, "%016llx", t);
+
+	//! ..but for now
+	char shorttarget[16];
+	memset(shorttarget, 0, 16);
+	memcpy(shorttarget, longtarget, 8);
+
+	//! flip to be suitable for xmrig
+	memset(target, 0, 16);
+	flipbits(shorttarget, target);
+}
+
 double target_to_diff(uint64_t target)
 {
 	if(!target) return 0;
@@ -753,6 +772,31 @@ int getblocheight(const char *coinb1)
 	return height;
 }
 
+uint64_t share_to_target(double diff)
+{
+        int i, shift = 29;
+        unsigned char targ[32];
+        for (i=0; i<32; i++)
+            targ[i]=0;
+        double ftarg = (double)0x0000ffff / diff;
+        while (ftarg < (double)0x00008000) {
+            shift--;
+            ftarg *= 256.0;
+        }
+        while (ftarg >= (double)0x00800000) {
+            shift++;
+            ftarg /= 256.0;
+        }
+        uint32_t nBits = (int)ftarg + (shift << 24);
+        shift = (nBits >> 24) & 0x00ff;
+        nBits &= 0x00FFFFFF;
+        targ[shift - 1] = nBits >> 16;
+        targ[shift - 2] = nBits >> 8;
+        targ[shift - 3] = nBits;
+        uint64_t starget = * (uint64_t *) &targ[24];
+        return (starget);
+}
+
 void sha256_double_hash_hex(const char *input, char *output, unsigned int len)
 {
 	char output1[32];
@@ -769,3 +813,10 @@ void sha256_hash_hex(const char *input, char *output, unsigned int len)
 	hexlify(output, (unsigned char *)output1, 32);
 }
 
+void flipbits(char* input, char* output)
+{
+	memcpy(output, input + 6, 2);
+	memcpy(output + 2, input + 4, 2);
+	memcpy(output + 4, input + 2, 2);
+	memcpy(output + 6, input, 2);
+}

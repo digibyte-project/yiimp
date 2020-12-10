@@ -2,18 +2,15 @@ CC=g++
 
 CPPFLAGS= -g -O2 -DHAVE_CURL -I/usr/include/mysql
 
-# Comment this line to disable address check on login,
-# if you use the auto exchange feature...
-CPPFLAGS += -DNO_EXCHANGE
-
-LDLIBS=iniparser/libiniparser.a algos/libalgos.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient
+LDLIBS=iniparser/libiniparser.a algos/libalgos.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient -lcrypto -lssl
 
 SOURCES=stratum.cpp db.cpp coind.cpp coind_aux.cpp coind_template.cpp coind_submit.cpp util.cpp list.cpp \
 	rpc.cpp job.cpp job_send.cpp job_core.cpp merkle.cpp share.cpp socket.cpp coinbase.cpp \
 	client.cpp client_submit.cpp client_core.cpp client_difficulty.cpp remote.cpp remote_template.cpp \
-	user.cpp object.cpp json.cpp base58.cpp rpc_curl.cpp
+	user.cpp object.cpp json.cpp base58.cpp rpc_curl.cpp randomx_hash.cpp
 
-SOURCES+=randomx/aes_hash.cpp \
+SOURCES+= \
+  randomx/aes_hash.cpp \
   randomx/allocator.cpp \
   randomx/argon2_avx2.c \
   randomx/argon2_core.c \
@@ -48,9 +45,9 @@ OUTPUT=stratum
 CODEDIR1=algos
 CODEDIR2=iniparser
 
-.PHONY: projectcode1 projectcode2 projectcode3
+.PHONY: projectcode1 projectcode2
 
-all: projectcode1 projectcode2 projectcode3 $(SOURCES) $(OUTPUT)
+all: projectcode1 projectcode2 $(SOURCES) $(OUTPUT)
 
 projectcode1:
 	$(MAKE) -C $(CODEDIR1)

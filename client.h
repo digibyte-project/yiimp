@@ -46,6 +46,8 @@ public:
 	int created;
 	int last_best;
 
+	char monero_diff[16]{0};
+
 	bool reconnectable;
 	bool reconnecting;
 
@@ -94,6 +96,11 @@ public:
 
 	YAAMP_CLIENT_ALGO algos_subscribed[YAAMP_MAXALGOS];
 	int job_history[YAAMP_JOB_MAXHISTORY];
+
+	//! since yiimp works per client thread,
+	//! and if the class falls out of scope each hash (requiring init/seed)
+	//! we have to have one rxhash per client instance.
+	rxhash client_hash;
 
 	int64_t shares;
 	int stats;

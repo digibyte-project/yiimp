@@ -1,3 +1,6 @@
+// Copyright (c) 2020 barrystyle
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "stratum.h"
 
@@ -6,7 +9,10 @@ uint64_t lyra2z_height = 0;
 //#define MERKLE_DEBUGLOG
 //#define DONTSUBMIT
 
-void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *templ, const char *nonce1, const char *nonce2, const char *ntime, const char *nonce, bool merkle_only)
+bool coind_submitblock(YAAMP_COIND *coind, const char *block);
+
+void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *templ,
+	const char *nonce1, const char *nonce2, const char *ntime, const char *nonce)
 {
 	sprintf(submitvalues->coinbase, "%s%s%s%s", templ->coinb1, nonce1, nonce2, templ->coinb2);
 	int coinbase_len = strlen(submitvalues->coinbase);
@@ -18,7 +24,8 @@ void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *tem
 	char doublehash[128];
 	memset(doublehash, 0, 128);
 
-        sha256_double_hash_hex((char *)coinbase_bin, doublehash, coinbase_len/2);
+	// some (old) wallet/algos need a simple SHA256 (blakecoin, whirlcoin, groestlcoin...)
+	sha256_double_hash_hex((char *)coinbase_bin, doublehash, coinbase_len/2);
 	string merkleroot = merkle_with_first(templ->txsteps, doublehash);
 	ser_string_be(merkleroot.c_str(), submitvalues->merkleroot_be, 8);
 
@@ -26,24 +33,100 @@ void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *tem
 	printf("merkle root %s\n", merkleroot.c_str());
 #endif
 
-	if (merkle_only)
-		return;
-
-	sprintf(submitvalues->header, "%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
-		ntime, templ->nbits, nonce);
+	//! prepare blob
+	sprintf(submitvalues->header, "%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be, templ->ntime, templ->nbits, nonce);
 	ser_string_be(submitvalues->header, submitvalues->header_be, 20);
-
 	binlify(submitvalues->header_bin, submitvalues->header_be);
+	sha256_double_hash((char *)submitvalues->header_bin, (char *)submitvalues->randomx_header_bin, 76);
 
-//	printf("%s\n", submitvalues->header_be);
-	int header_len = strlen(submitvalues->header)/2;
-	g_current_algo->hash_function((char *)submitvalues->header_bin, (char *)submitvalues->hash_bin, header_len);
+	//! to hex (header)
+	for (int i=0; i<76; i++) {
+	   sprintf(&submitvalues->randomx_header[i*2], "%02hhx", submitvalues->randomx_header_bin[i]);
+	}
 
-	hexlify(submitvalues->hash_hex, submitvalues->hash_bin, 32);
-	string_be(submitvalues->hash_hex, submitvalues->hash_be);
+	//! to hex (completeblock)
+	sprintf(&submitvalues->randomx_block[0], "%s", submitvalues->header);
+	sprintf(&submitvalues->randomx_block[160], "%s%s", "01", submitvalues->coinbase);
 }
 
 /////////////////////////////////////////////
+
+bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
+{
+        bool found = false;
+        YAAMP_JOB* job = nullptr;
+        for (CLI li = g_list_job.first; li; li = li->next) {
+                job = (YAAMP_JOB*)li->data;
+                if (job->id == client->jobid_sent) {
+                        found = true;
+                        break;
+                }
+        }
+        if (!found)
+                return false;
+
+        //! get nonce
+        char* client_nonce = json_params->u.object.values[2].value->u.string.ptr;
+        if (!client_nonce)
+                return false;
+
+        //! assemble coinbasetxn per client
+        YAAMP_JOB_TEMPLATE* templ = job->templ;
+        YAAMP_JOB_VALUES submitvalues;
+        build_submit_values(&submitvalues, templ, client->extranonce1, "00000000", templ->ntime, client_nonce);
+        sprintf(&submitvalues.randomx_header[78], "%s000000000000000000000000000000000000000000000000000000000000000000", client_nonce);
+        // printf("header %s\n\n", &submitvalues.randomx_header[0]);
+        // printf("block  %s\n\n", &submitvalues.randomx_block[0]);
+
+        //! perform the actual hashing
+        char testhash[32];
+        unsigned char testheader[160];
+        memset(testhash, 0, sizeof(testhash));
+        memset(testheader, 0, sizeof(testheader));
+        binlify(testheader, &submitvalues.randomx_header[0]);
+        client->client_hash.randomx_hash((const char*)testheader, testhash, templ->seed_bin);
+
+        //! check difficulty
+        uint64_t hash_int = *(uint64_t*)&testhash[24];
+        uint64_t user_target = share_to_target(client->difficulty_actual);
+        uint64_t coin_target = diff_to_target(job->coind->difficulty);
+
+        debuglog("user %s submitted nonce %s\n", client->username, client_nonce);
+        debuglog("%016llx actual\n", hash_int);
+        debuglog("%016llx target\n", user_target);
+        debuglog("%016llx coin\n", coin_target);
+        debuglog("\n");
+
+        //! handle block
+        bool good_share = hash_int < user_target;
+        bool good_block = hash_int < coin_target;
+        if (good_block) {
+                YAAMP_COIND* coind = job->coind;
+                char submit_block[1024];
+                memset(submit_block, 0, 1024);
+                memcpy(submit_block, submitvalues.randomx_block, strlen(submitvalues.randomx_block));
+                for (int i = 0; i < 19; i++)
+                        flipbits(submitvalues.randomx_block + (i * 8), submit_block + (i * 8));
+                bool submit = coind_submitblock(coind, submit_block);
+                if (!submit) {
+                        stratumlog("block failed submission\n");
+                        return false;
+                } else {
+                        stratumlog("block submitted successfully\n");
+                        job_update();
+                        return true;
+                }
+        }
+
+        //! handle share
+        if (!good_share) {
+                stratumlog("invalid share rejected\n");
+                return false;
+        }
+
+        stratumlog("valid share accepted\n");
+        return true;
+}
 
 static void create_decred_header(YAAMP_JOB_TEMPLATE *templ, YAAMP_JOB_VALUES *out,
 	const char *ntime, const char *nonce, const char *nonce2, const char *vote, bool usegetwork)
@@ -349,6 +432,8 @@ static bool valid_string_params(json_value *json_params)
 
 bool client_submit(YAAMP_CLIENT *client, json_value *json_params)
 {
+	return client_submit_randomx(client, json_params);
+
 	// submit(worker_name, jobid, extranonce2, ntime, nonce):
 	if(json_params->u.array.length<5 || !valid_string_params(json_params)) {
 		debuglog("%s - %s bad message\n", client->username, client->sock->ip);

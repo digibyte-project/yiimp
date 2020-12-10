@@ -181,7 +181,7 @@ void coind_init(YAAMP_COIND *coind)
 
 	sprintf(params, "[\"%s\"]", account);
 
-	json_value *json = rpc_call(&coind->rpc, "getaccountaddress", params);
+	json_value *json = rpc_call(&coind->rpc, "getnewaddress", params);
 	if(!json)
 	{
 		json = rpc_call(&coind->rpc, "getaddressesbyaccount", params);

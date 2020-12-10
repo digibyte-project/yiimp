@@ -14,6 +14,12 @@ struct YAAMP_JOB_VALUES
 	char header_be[1024];
 	unsigned char header_bin[1024];
 
+	char randomx_header[1024];
+	unsigned char randomx_header_bin[1024];
+
+	char randomx_block[1024];
+	unsigned char randomx_block_bin[1024];
+
 	char hash_hex[1024];
 	char hash_be[1024];
 	unsigned char hash_bin[1024];
@@ -43,6 +49,8 @@ struct YAAMP_JOB_TEMPLATE
 	char version[32];
 	char nbits[32];
 	char ntime[32];
+	char seed[128];
+	unsigned char seed_bin[128];
 
 	int height;
 	int target;
