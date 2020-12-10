@@ -147,6 +147,8 @@ void scrypt_N_R_1_256(const char* input, char* output, uint32_t N, uint32_t R, u
 void sha256_hash_hex(const char *input, char *output, unsigned int len);
 void sha256_double_hash_hex(const char *input, char *output, unsigned int len);
 
+void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *templ, const char *nonce1, const char *nonce2, const char *ntime, const char *nonce, bool merkle_only = false);
+
 #include "algos/a5a.h"
 #include "algos/c11.h"
 #include "algos/x11.h"

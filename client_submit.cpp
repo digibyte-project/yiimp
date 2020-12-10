@@ -6,8 +6,7 @@ uint64_t lyra2z_height = 0;
 //#define MERKLE_DEBUGLOG
 //#define DONTSUBMIT
 
-void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *templ,
-	const char *nonce1, const char *nonce2, const char *ntime, const char *nonce)
+void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *templ, const char *nonce1, const char *nonce2, const char *ntime, const char *nonce, bool merkle_only)
 {
 	sprintf(submitvalues->coinbase, "%s%s%s%s", templ->coinb1, nonce1, nonce2, templ->coinb2);
 	int coinbase_len = strlen(submitvalues->coinbase);
@@ -19,31 +18,20 @@ void build_submit_values(YAAMP_JOB_VALUES *submitvalues, YAAMP_JOB_TEMPLATE *tem
 	char doublehash[128];
 	memset(doublehash, 0, 128);
 
-	// some (old) wallet/algos need a simple SHA256 (blakecoin, whirlcoin, groestlcoin...)
-	YAAMP_HASH_FUNCTION merkle_hash = sha256_double_hash_hex;
-	if (g_current_algo->merkle_func)
-		merkle_hash = g_current_algo->merkle_func;
-	merkle_hash((char *)coinbase_bin, doublehash, coinbase_len/2);
-
+        sha256_double_hash_hex((char *)coinbase_bin, doublehash, coinbase_len/2);
 	string merkleroot = merkle_with_first(templ->txsteps, doublehash);
 	ser_string_be(merkleroot.c_str(), submitvalues->merkleroot_be, 8);
 
 #ifdef MERKLE_DEBUGLOG
 	printf("merkle root %s\n", merkleroot.c_str());
 #endif
-	if (!strcmp(g_stratum_algo, "lbry")) {
-		sprintf(submitvalues->header, "%s%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
-			templ->claim_be, ntime, templ->nbits, nonce);
-		ser_string_be(submitvalues->header, submitvalues->header_be, 112/4);
-	} else if (strlen(templ->extradata_be) == 128) { // LUX SC
-		sprintf(submitvalues->header, "%s%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
-			ntime, templ->nbits, nonce, templ->extradata_be);
-		ser_string_be(submitvalues->header, submitvalues->header_be, 36); // 80+64 / sizeof(u32)
-	} else {
-		sprintf(submitvalues->header, "%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
-			ntime, templ->nbits, nonce);
-		ser_string_be(submitvalues->header, submitvalues->header_be, 20);
-	}
+
+	if (merkle_only)
+		return;
+
+	sprintf(submitvalues->header, "%s%s%s%s%s%s", templ->version, templ->prevhash_be, submitvalues->merkleroot_be,
+		ntime, templ->nbits, nonce);
+	ser_string_be(submitvalues->header, submitvalues->header_be, 20);
 
 	binlify(submitvalues->header_bin, submitvalues->header_be);
 
