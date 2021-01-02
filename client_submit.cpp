@@ -113,7 +113,8 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
                         return false;
                 } else {
                         stratumlog("block submitted successfully\n");
-                        job_update();
+                        coind_create_job(coind, true);
+                        job_signal();
                         return true;
                 }
         }
