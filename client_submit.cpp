@@ -127,8 +127,17 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
                 return false;
         }
 
+        submit_ok(client);
         stratumlog("valid share accepted\n");
         return true;
+}
+
+void submit_ok(YAAMP_CLIENT *client)
+{
+        char buffer[512];
+        memset(buffer, 0, sizeof(buffer));
+        sprintf(buffer, "{\"id\":%d,\"jsonrpc\":\"2.0\",\"error\":null,\"result\":{\"status\":\"OK\"}}\n", client->id_int);
+        socket_send_raw(client->sock, buffer, strlen(buffer));
 }
 
 static void create_decred_header(YAAMP_JOB_TEMPLATE *templ, YAAMP_JOB_VALUES *out,

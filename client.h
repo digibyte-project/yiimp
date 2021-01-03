@@ -141,6 +141,8 @@ bool client_find_my_ip(const char *ip);
 
 //////////////////////////////////////////////////////////////////////////
 
+void submit_ok(YAAMP_CLIENT *client);
+
 int client_send_difficulty(YAAMP_CLIENT *client, double difficulty);
 double client_normalize_difficulty(double difficulty);
 
