@@ -90,6 +90,8 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
         uint64_t hash_int = *(uint64_t*)&testhash[24];
         uint64_t user_target = share_to_target(client->difficulty_actual);
         uint64_t coin_target = diff_to_target(job->coind->difficulty);
+        if (coin_target > 0x0000ffff00000000)
+            coin_target = 0x0000ffff00000000;
 
         debuglog("user %s submitted nonce %s\n", client->username, client_nonce);
         debuglog("%016llx actual\n", hash_int);
