@@ -312,6 +312,7 @@ YAAMP_JOB_TEMPLATE *coind_create_template(YAAMP_COIND *coind)
             strcpy(templ->seed, seed);
             memset(templ->seed_bin, 0, 128);
             binlify(templ->seed_bin, templ->seed);
+            setLatestSeed(templ->seed_bin);
 	}
 
 	// LBC Claim Tree (with wallet gbt patch)

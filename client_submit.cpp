@@ -84,7 +84,49 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
         memset(testhash, 0, sizeof(testhash));
         memset(testheader, 0, sizeof(testheader));
         binlify(testheader, &submitvalues.randomx_header[0]);
-        client->client_hash.randomx_hash((const char*)testheader, testhash, templ->seed_bin);
+
+        //! create a work ticket
+        int localId = rand() % 2197152;
+        rxworkUnit localWork;
+        localWork.workid = localId;
+        memcpy(localWork.work,(const char*)testheader,76);
+        memset(localWork.result,0,sizeof(localWork.result));
+        workQueueIn.push(localWork);
+
+        //! expire when job has taken longer than 500ms
+        bool workDone = false;
+        auto duration = std::chrono::system_clock::now().time_since_epoch();
+        auto millis_st = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        while (!workDone)
+        {
+            //! spin til work has popped out
+            while (workQueueOut.empty()) {
+                usleep(5*YAAMP_MS);
+            }
+            //! is this workunit expired
+            if (isJobBad(workQueueOut.front().workid)) {
+                workQueueOut.pop();
+                printf("bad work unit pruned out\n");
+                continue;
+            }
+            //! make sure its ours
+            if (workQueueOut.front().workid == localId) {
+                memcpy(testhash,workQueueOut.front().result,32);
+                workQueueOut.pop();
+                workDone = true;
+            }
+            //! timeout
+            duration = std::chrono::system_clock::now().time_since_epoch();
+            auto millis_fn = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+            if (millis_fn - millis_st > 500) {
+                printf("work unit %d timed out\n");
+                break;
+            }
+        }
+
+        //! shouldnt be able to happen
+        if (!workDone)
+            return false;
 
         //! check difficulty
         uint64_t hash_int = *(uint64_t*)&testhash[24];
@@ -93,11 +135,11 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
         if (coin_target > 0x0000ffff00000000)
             coin_target = 0x0000ffff00000000;
 
+        printf("\n");
         debuglog("user %s submitted nonce %s\n", client->username, client_nonce);
         debuglog("%016llx actual\n", hash_int);
         debuglog("%016llx target\n", user_target);
         debuglog("%016llx coin\n", coin_target);
-        debuglog("\n");
 
         //! handle block
         bool good_share = hash_int < user_target;
@@ -124,6 +166,7 @@ bool client_submit_randomx(YAAMP_CLIENT* client, json_value* json_params)
         //! handle share
         if (!good_share) {
                 stratumlog("invalid share rejected\n");
+                submit_bad(client);
                 return false;
         }
 
@@ -137,6 +180,14 @@ void submit_ok(YAAMP_CLIENT *client)
         char buffer[512];
         memset(buffer, 0, sizeof(buffer));
         sprintf(buffer, "{\"id\":%d,\"jsonrpc\":\"2.0\",\"error\":null,\"result\":{\"status\":\"OK\"}}\n", client->id_int);
+        socket_send_raw(client->sock, buffer, strlen(buffer));
+}
+
+void submit_bad(YAAMP_CLIENT *client)
+{
+        char buffer[512];
+        memset(buffer, 0, sizeof(buffer));
+        sprintf(buffer, "{\"id\":%d,\"jsonrpc\":\"2.0\",\"error\":true,\"result\":{\"status\":\"null\"}}\n", client->id_int);
         socket_send_raw(client->sock, buffer, strlen(buffer));
 }
 

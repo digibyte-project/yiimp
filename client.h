@@ -97,11 +97,6 @@ public:
 	YAAMP_CLIENT_ALGO algos_subscribed[YAAMP_MAXALGOS];
 	int job_history[YAAMP_JOB_MAXHISTORY];
 
-	//! since yiimp works per client thread,
-	//! and if the class falls out of scope each hash (requiring init/seed)
-	//! we have to have one rxhash per client instance.
-	rxhash client_hash;
-
 	int64_t shares;
 	int stats;
 
@@ -142,6 +137,7 @@ bool client_find_my_ip(const char *ip);
 //////////////////////////////////////////////////////////////////////////
 
 void submit_ok(YAAMP_CLIENT *client);
+void submit_bad(YAAMP_CLIENT *client);
 
 int client_send_difficulty(YAAMP_CLIENT *client, double difficulty);
 double client_normalize_difficulty(double difficulty);

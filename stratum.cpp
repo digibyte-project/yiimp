@@ -204,6 +204,9 @@ int main(int argc, char **argv)
 
 	////////////////////////////////////////////////
 
+	// init randomx workers
+	workerPoolInit();
+
 	pthread_t thread1;
 	pthread_create(&thread1, NULL, stratum_thread, NULL);
 

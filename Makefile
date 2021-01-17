@@ -1,13 +1,13 @@
 CC=g++
 
-CPPFLAGS= -g -O2 -DHAVE_CURL -I/usr/include/mysql
+CPPFLAGS=-O2 -DHAVE_CURL -I/usr/include/mysql -std=c++11
 
-LDLIBS=iniparser/libiniparser.a algos/libalgos.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient -lcrypto -lssl
+LDLIBS=-O2 iniparser/libiniparser.a algos/libalgos.a -lpthread -lgmp -lm -lstdc++ -lcurl -lmysqlclient -lcrypto -lssl
 
 SOURCES=stratum.cpp db.cpp coind.cpp coind_aux.cpp coind_template.cpp coind_submit.cpp util.cpp list.cpp \
 	rpc.cpp job.cpp job_send.cpp job_core.cpp merkle.cpp share.cpp socket.cpp coinbase.cpp \
 	client.cpp client_submit.cpp client_core.cpp client_difficulty.cpp remote.cpp remote_template.cpp \
-	user.cpp object.cpp json.cpp base58.cpp rpc_curl.cpp randomx_hash.cpp
+	user.cpp object.cpp json.cpp base58.cpp rpc_curl.cpp randomx_worker.cpp
 
 SOURCES+= \
   randomx/aes_hash.cpp \

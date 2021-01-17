@@ -20,7 +20,11 @@
 #include <ifaddrs.h>
 #include <dirent.h>
 
+#include <chrono>
 #include <iostream>
+#include <mutex>
+#include <queue>
+#include <thread>
 #include <vector>
 
 using namespace std;
@@ -31,8 +35,7 @@ using namespace std;
 #include "util.h"
 
 #include "randomx/randomx.h"
-
-#include "randomx_hash.h"
+#include "randomx_worker.h"
 
 #define YAAMP_RESTARTDELAY		(24*60*60)
 #define YAAMP_MAXJOBDELAY		(2*60)
